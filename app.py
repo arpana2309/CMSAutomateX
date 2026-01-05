@@ -1,5 +1,7 @@
 import asyncio
 import sys
+import pandas as pd
+from io import BytesIO
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
@@ -19,6 +21,9 @@ for key, default in {
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
+
+if "rfp_data" not in st.session_state:
+    st.session_state["rfp_data"] = None
 
 # ---------------- CSS ----------------
 st.markdown("""
@@ -114,3 +119,72 @@ else:
 
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
+
+
+# ---------------- RFP Analysis & Download Excel----------------
+if st.session_state["website_url"]:
+    if st.button("📊 Generate RFP Analysis"):
+        with st.spinner("Generating RFP-ready analysis..."):
+            from ai_service import generate_rfp_analysis
+            st.session_state["rfp_data"] = generate_rfp_analysis(
+                st.session_state["context"]
+            )
+        st.success("RFP analysis ready!")
+
+def generate_excel(rfp_data: dict):
+    output = BytesIO()
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+
+        # ---------------- Overview ----------------
+        pd.DataFrame([rfp_data.get("overview", {})]).to_excel(
+            writer, sheet_name="Overview", index=False
+        )
+
+        # ---------------- Page Types ----------------
+        page_types = pd.DataFrame(rfp_data.get("page_types", []))
+        if not page_types.empty:
+            page_types.to_excel(writer, sheet_name="Page Types", index=False)
+
+        # ---------------- Components ----------------
+        components = pd.DataFrame(rfp_data.get("components", []))
+        if not components.empty:
+            components.to_excel(writer, sheet_name="Components", index=False)
+
+        # ---------------- Pages ----------------
+        pages = pd.DataFrame(rfp_data.get("pages", []))
+        if not pages.empty:
+            pages.to_excel(writer, sheet_name="Pages", index=False)
+
+        # ---------------- Third-party Integrations ----------------
+        integrations = pd.DataFrame(
+            rfp_data.get("third_party_integrations", [])
+        )
+        if not integrations.empty:
+            integrations.to_excel(
+                writer, sheet_name="Third Party Integrations", index=False
+            )
+
+        # ---------------- Recommendations ----------------
+        recommendations = pd.DataFrame(
+            rfp_data.get("recommendations", []),
+            columns=["Recommendation"]
+        )
+        if not recommendations.empty:
+            recommendations.to_excel(
+                writer, sheet_name="Recommendations", index=False
+            )
+
+    output.seek(0)
+    return output
+     
+
+if st.session_state.get("rfp_data"):
+    excel_file = generate_excel(st.session_state["rfp_data"])
+
+    st.download_button(
+        label="📥 Download RFP Analysis (Excel)",
+        data=excel_file,
+        file_name="Website_RFP_Analysis.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )

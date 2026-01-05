@@ -4,3 +4,4 @@ python-multipart
 playwright
 beautifulsoup4
 openai
+openpyxl
