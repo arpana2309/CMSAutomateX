@@ -163,7 +163,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------- Auto-suggested questions UI ----------------
 if st.session_state["suggested_questions"]:
-    st.markdown("### Suggested RFP Questions")
+    st.markdown("### Suggested Questions")
 
     for i, q in enumerate(st.session_state["suggested_questions"]):
         if st.button(q["ui_label"], key=f"suggest_{i}"):
