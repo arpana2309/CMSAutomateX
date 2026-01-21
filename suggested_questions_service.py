@@ -16,10 +16,25 @@ def load_static_questions() -> list[dict]:
     if not STATIC_Q_PATH.exists():
         return []
 
-    with open(STATIC_Q_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with open(STATIC_Q_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
 
-    return data.get("static_questions", [])
+        questions = data.get("static_questions", [])
+        if not isinstance(questions, list):
+            return []
+
+        # Randomize order so callers don't always get the same ones
+        import random
+        random.shuffle(questions)
+
+        return questions
+
+    except Exception as e:
+        print(f"Error loading static questions: {e}")
+        return []
+
+
 
 #---------------------- AI QUESTIONS GENERATION ---------------------#
 def generate_ai_questions(context: str, limit: int = 2) -> list[dict]:
@@ -35,6 +50,7 @@ Your task is to propose DISCOVERY QUESTIONS that a CMS architect
 would naturally ask when analyzing THIS website for an RFP.
 
 IMPORTANT GUIDELINES:
+- Generate question strictly in and around the website context provided.
 - These are NOT content summary questions
 - These are ARCHITECTURE & ESTIMATION questions
 - Even if the website content is limited or generic,
@@ -110,11 +126,18 @@ Website Context (partial, for reference only):
 
 
 #---------------------- COMBINED SUGGESTED QUESTIONS ---------------------#
+import random
+
 def get_suggested_questions(context: str) -> list[dict]:
-    static_questions = load_static_questions()[:2]
-    ai_questions = generate_ai_questions(context, limit=2)
-    
-    print("STATIC QUESTIONS:", static_questions)
-    print("AI QUESTIONS:", ai_questions)
-    
+    static_all = load_static_questions()
+    static_questions = random.sample(
+        static_all,
+        k=min(2, len(static_all))
+    )
+
+    ai_questions = generate_ai_questions(
+        context=context,
+        limit=2
+    )
+
     return static_questions + ai_questions
