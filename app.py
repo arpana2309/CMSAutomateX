@@ -17,7 +17,6 @@ import subprocess
 import os
 import pathlib
 
-
 def ensure_playwright_browsers():
     """Install Playwright browsers if not already installed."""
     try:
