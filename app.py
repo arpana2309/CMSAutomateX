@@ -146,17 +146,39 @@ if not st.session_state["sitemap_url"]:
             st.warning("Please enter a valid sitemap URL.")
         else:
             with st.spinner("Crawling sitemap..."):
-                context, crawled = asyncio.run(crawl_website(
-                    sitemap,
-                    max_pages=int(ui_max_pages),
-                    concurrency=int(ui_concurrency),
-                    render_js=bool(render_js)
-                ))
-            st.session_state["context"] = context
-            st.session_state["crawled_urls"] = crawled
-            st.session_state["sitemap_url"] = sitemap
-            if not st.session_state["suggested_questions"]:
-                st.session_state["suggested_questions"] = get_suggested_questions(context)
+                try:
+                    # Use get_event_loop() for Streamlit compatibility
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        # If loop is already running (Streamlit), create a new one
+                        import nest_asyncio
+                        nest_asyncio.apply()
+                        context, crawled = asyncio.run(crawl_website(
+                            sitemap,
+                            max_pages=int(ui_max_pages),
+                            concurrency=int(ui_concurrency),
+                            render_js=bool(render_js)
+                        ))
+                    else:
+                        context, crawled = loop.run_until_complete(crawl_website(
+                            sitemap,
+                            max_pages=int(ui_max_pages),
+                            concurrency=int(ui_concurrency),
+                            render_js=bool(render_js)
+                        ))
+                except RuntimeError:
+                    # Fallback for Streamlit Cloud
+                    context, crawled = asyncio.run(crawl_website(
+                        sitemap,
+                        max_pages=int(ui_max_pages),
+                        concurrency=int(ui_concurrency),
+                        render_js=bool(render_js)
+                    ))
+                st.session_state["context"] = context
+                st.session_state["crawled_urls"] = crawled
+                st.session_state["sitemap_url"] = sitemap
+                if not st.session_state["suggested_questions"]:
+                    st.session_state["suggested_questions"] = get_suggested_questions(context)
 
             st.session_state["messages"].append({
                 "role": "bot",
