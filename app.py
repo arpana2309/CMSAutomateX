@@ -182,6 +182,8 @@ st.markdown('<div class="p-3 border-t bg-white">', unsafe_allow_html=True)
 
 if not st.session_state["sitemap_url"]:
     # Crawl controls
+    sitemap = st.text_input("Sitemap URL", placeholder="https://example.com/sitemap.xml", label_visibility="collapsed")
+    st.markdown("### Additional Configurations")
     col_a, col_b = st.columns(2)
     with col_a:
         ui_max_pages = st.number_input("Max pages to crawl", min_value=50, max_value=5000, value=300, step=50)
@@ -190,12 +192,11 @@ if not st.session_state["sitemap_url"]:
 
     render_js = st.checkbox("Render JS (Playwright)", help="Enable for SPA/JS-heavy sites. Slower but captures dynamic content.", value=False)
 
-    sitemap = st.text_input("Sitemap URL", placeholder="https://example.com/sitemap.xml", label_visibility="collapsed")
-
     if st.button("Load Sitemap"):
         if not sitemap.startswith("http"):
             st.warning("Please enter a valid sitemap URL.")
         else:
+           
             with st.spinner("Crawling sitemap..."):
                 context, crawled = asyncio.run(crawl_website(
                     sitemap,
@@ -225,7 +226,7 @@ if not st.session_state["sitemap_url"]:
             st.rerun()
 else:
     with st.form("chat_form", clear_on_submit=True):
-        user_input = st.text_input("Reply...", label_visibility="collapsed")
+        user_input = st.text_input("Reply...", placeholder="Ask me anything",label_visibility="collapsed")
         send = st.form_submit_button("Send")
 
     if send and user_input.strip():
@@ -243,7 +244,6 @@ else:
         })
 
         st.rerun()
-
 
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
@@ -276,34 +276,69 @@ if st.session_state["suggested_questions"]:
 
 # ---------------- RFP Analysis & Download Excel----------------
 if st.session_state["sitemap_url"]:
-    if st.button("📊 Generate RFP Analysis"):
-        crawled_count = len(st.session_state.get("crawled_urls", []))
+    # style only the Generate RFP Analysis button using the Streamlit-generated key class
+    st.markdown(
+        """
+        <style>
+        /* Pin the Generate RFP Analysis button to the top-left corner and keep fit-content sizing */
+        .st-key-generate_rfp_btn {
+            top: 16px !important;
+            left: 16px !important;
+            display: inline-flex !important;
+            width: auto !important;
+            z-index: 9999 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .st-key-generate_rfp_btn .stButton {
+            width: auto !important;
+        }
+
+        .st-key-generate_rfp_btn .stButton > button,
+        .st-key-generate_rfp_btn .stButton > button > div {
+            background-color: #ADD8E6 !important;
+            color: #000 !important;
+            border-radius: 8px !important;
+            width: auto !important;
+            padding: 8px 16px !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
         
-        # Validation: ensure we have crawled URLs
-        if not st.session_state.get("context"):
-            st.error("❌ No context available. Please crawl a sitemap first.")
-        elif crawled_count == 0:
-            st.error("❌ No URLs found. Please ensure the sitemap crawl was successful and returned pages.")
-        # Show estimated time based on URL count
-        elif crawled_count <= 100:
-            time_est = "~15-30 seconds"
-        elif crawled_count <= 500:
-            time_est = f"~{int(crawled_count/100) * 20} seconds - {int(crawled_count/100) * 40} seconds"
-        else:
-            time_est = f"~{int(crawled_count/80) * 20} seconds - {int(crawled_count/80) * 40} seconds"
-        
-        with st.spinner(f"Generating RFP analysis for {crawled_count} pages (est. {time_est})..."):
-            from ai_service import generate_rfp_analysis
-            # Automatic batch sizing based on URL count for optimal performance
-            st.session_state["rfp_data"] = generate_rfp_analysis(
-                st.session_state["context"],
-                st.session_state.get("crawled_urls", []),
-                batch_size=None  # Auto-adjust: 100 for <500, 80 for <1000, 50 for >1000
-            )
-        
-        final_count = len(st.session_state["rfp_data"].get("pages", []))
-        st.success(f"✅ RFP analysis complete! Analyzed {final_count} pages.")
-        st.rerun()
+        if st.button("📊 Generate RFP Analysis", key="generate_rfp_btn"):
+            crawled_count = len(st.session_state.get("crawled_urls", []))
+            
+            # Validation: ensure we have crawled URLs
+            if not st.session_state.get("context"):
+                st.error("❌ No context available. Please crawl a sitemap first.")
+            elif crawled_count == 0:
+                st.error("❌ No URLs found. Please ensure the sitemap crawl was successful and returned pages.")
+            # Show estimated time based on URL count
+            elif crawled_count <= 100:
+                time_est = "~15-30 seconds"
+            elif crawled_count <= 500:
+                time_est = f"~{int(crawled_count/100) * 20} seconds - {int(crawled_count/100) * 40} seconds"
+            else:
+                time_est = f"~{int(crawled_count/80) * 20} seconds - {int(crawled_count/80) * 40} seconds"
+            
+            with st.spinner(f"Generating RFP analysis for {crawled_count} pages (est. {time_est})..."):
+                from ai_service import generate_rfp_analysis
+                # Automatic batch sizing based on URL count for optimal performance
+                st.session_state["rfp_data"] = generate_rfp_analysis(
+                    st.session_state["context"],
+                    st.session_state.get("crawled_urls", []),
+                    batch_size=None  # Auto-adjust: 100 for <500, 80 for <1000, 50 for >1000
+                )
+            
+            final_count = len(st.session_state["rfp_data"].get("pages", []))
+            st.success(f"✅ RFP analysis complete! Analyzed {final_count} pages.")
+            st.rerun()
 
 def generate_excel(rfp_data: dict):
     output = BytesIO()
