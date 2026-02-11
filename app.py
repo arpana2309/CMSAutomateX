@@ -2,6 +2,11 @@ import asyncio
 import sys
 import pandas as pd
 from io import BytesIO
+import os
+import subprocess
+
+if not os.path.exists("/home/appuser/.cache/ms-playwright"):
+    subprocess.run(["python", "-m", "playwright", "install", "chromium"])  
 from dotenv import load_dotenv
 load_dotenv(override=True)  # This reloads .env file each time
 
