@@ -5,8 +5,12 @@ from io import BytesIO
 from dotenv import load_dotenv
 load_dotenv(override=True)  # This reloads .env file each time
 
+# Handle asyncio event loops for Streamlit compatibility
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+import nest_asyncio
+nest_asyncio.apply()  # Allow nested event loops for Streamlit
     
 import streamlit as st
 from crawler import crawl_website
@@ -146,34 +150,12 @@ if not st.session_state["sitemap_url"]:
             st.warning("Please enter a valid sitemap URL.")
         else:
             with st.spinner("Crawling sitemap..."):
-                try:
-                    # Use get_event_loop() for Streamlit compatibility
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        # If loop is already running (Streamlit), create a new one
-                        import nest_asyncio
-                        nest_asyncio.apply()
-                        context, crawled = asyncio.run(crawl_website(
-                            sitemap,
-                            max_pages=int(ui_max_pages),
-                            concurrency=int(ui_concurrency),
-                            render_js=bool(render_js)
-                        ))
-                    else:
-                        context, crawled = loop.run_until_complete(crawl_website(
-                            sitemap,
-                            max_pages=int(ui_max_pages),
-                            concurrency=int(ui_concurrency),
-                            render_js=bool(render_js)
-                        ))
-                except RuntimeError:
-                    # Fallback for Streamlit Cloud
-                    context, crawled = asyncio.run(crawl_website(
-                        sitemap,
-                        max_pages=int(ui_max_pages),
-                        concurrency=int(ui_concurrency),
-                        render_js=bool(render_js)
-                    ))
+                context, crawled = asyncio.run(crawl_website(
+                    sitemap,
+                    max_pages=int(ui_max_pages),
+                    concurrency=int(ui_concurrency),
+                    render_js=bool(render_js)
+                ))
                 st.session_state["context"] = context
                 st.session_state["crawled_urls"] = crawled
                 st.session_state["sitemap_url"] = sitemap
