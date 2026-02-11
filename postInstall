@@ -1,2 +1,5 @@
-pip install playwright
+#!/bin/bash
+echo "Installing Playwright browsers..."
 python -m playwright install --with-deps chromium
+echo "Playwright install complete."
+
