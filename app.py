@@ -182,9 +182,16 @@ st.markdown('<div class="p-3 border-t bg-white">', unsafe_allow_html=True)
 
 if not st.session_state["sitemap_url"]:
     # Crawl controls
+    st.markdown("<div style='font-weight:700; font-size:20px; margin-bottom:10px;'>Enter Website Sitemap URL to Crawl and Analyze:</div>", unsafe_allow_html=True)
     sitemap = st.text_input("Sitemap URL", placeholder="https://example.com/sitemap.xml", label_visibility="collapsed")
-    st.markdown("### Additional Configurations")
-    col_a, col_b = st.columns(2)
+    
+    st.markdown(
+        '<style>.small-config{font-size:14px !important; font-weight:600; color:#374151; margin:8px 0;}</style>',
+        unsafe_allow_html=True
+    )
+    st.markdown('<h4 class="small-config">Additional Configurations(Optional)</h4>', unsafe_allow_html=True)
+    
+    col_a, col_b, _ = st.columns([1,1,3])
     with col_a:
         ui_max_pages = st.number_input("Max pages to crawl", min_value=50, max_value=5000, value=300, step=50)
     with col_b:
