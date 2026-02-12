@@ -193,9 +193,22 @@ if not st.session_state["sitemap_url"]:
     
     col_a, col_b, _ = st.columns([1,1,3])
     with col_a:
-        ui_max_pages = st.number_input("Max pages to crawl", min_value=50, max_value=5000, value=300, step=50)
+        ui_max_pages = st.number_input(
+            "Max pages to crawl", 
+            min_value=50, 
+            max_value=5000, 
+            value=300, 
+            step=50,
+            help="Enter Maximum pages to be crawled from the sitemap. Default is 300. Adjust based on site size and needs.")
     with col_b:
-        ui_concurrency = st.number_input("Concurrent fetches", min_value=1, max_value=24, value=8, step=1)
+        ui_concurrency = st.number_input(
+            "Concurrent fetches",
+            min_value=1,
+            max_value=24,
+            value=8,
+            step=1,
+            help="Limit how many pages are fetched at the same time. Higher values crawl faster but increase load"
+        )
 
     render_js = st.checkbox("Render JS (Playwright)", help="Enable for SPA/JS-heavy sites. Slower but captures dynamic content.", value=False)
 
