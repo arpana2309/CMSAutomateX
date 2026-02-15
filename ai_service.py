@@ -542,15 +542,39 @@ WEBSITE CONTENT (REFERENCE SOURCE):
         }
     }
 
-    response = client.chat.completions.create(
-        model=AZURE_OPENAI_DEPLOYMENT_NAME,
-        messages=[{"role": "user", "content": prompt}],
-        max_completion_tokens=16000,
-        tools=[rfp_function],
-        tool_choice={"type": "function", "function": {"name": "submit_rfp"}}
-    )
+    import time
 
-    message = response.choices[0].message
+    # Call the chat completion with a small retry loop to handle transient empty responses
+    response = None
+    last_exception = None
+    for attempt in range(1, 4):
+        try:
+            response = client.chat.completions.create(
+                model=AZURE_OPENAI_DEPLOYMENT_NAME,
+                messages=[{"role": "user", "content": prompt}],
+                max_completion_tokens=16000,
+                tools=[rfp_function],
+                tool_choice={"type": "function", "function": {"name": "submit_rfp"}}
+            )
+            message = response.choices[0].message
+
+            # If message has content or a tool call, accept it
+            content_present = bool(getattr(message, "content", None) and getattr(message, "content").strip())
+            tool_calls = getattr(message, "tool_calls", None)
+            if content_present or (tool_calls and len(tool_calls) > 0):
+                break
+
+            # Otherwise, warn and retry
+            print(f"WARNING: Empty AI response on attempt {attempt}. Retrying...")
+        except Exception as e:
+            last_exception = e
+            print(f"WARNING: Chat completion attempt {attempt} failed: {e}")
+
+        # backoff
+        time.sleep(1 + attempt * 2)
+
+    if response is None:
+        raise ValueError(f"AI chat request failed after retries: {last_exception}")
     
     # Prefer tool call JSON if provided
     tool_calls = getattr(message, "tool_calls", None)
@@ -566,9 +590,16 @@ WEBSITE CONTENT (REFERENCE SOURCE):
             print(f"WARNING: Parse failed, attempting sanitization...")
             data = _safe_json_loads(args)
     else:
-        raw = message.content.strip() if message.content else ""
+        raw = getattr(message, "content", None) or ""
+        raw = raw.strip()
         if not raw:
-            raise ValueError("Empty AI response")
+            # Provide diagnostic information to aid debugging
+            summary = {
+                "choices_len": len(getattr(response, "choices", []) or []),
+                "tool_calls": bool(tool_calls),
+                "raw_message_repr": str(message)
+            }
+            raise ValueError(f"Empty AI response after retries. Response summary: {summary}")
         data = _safe_json_loads(raw)
 
     # Ensure required fields exist
